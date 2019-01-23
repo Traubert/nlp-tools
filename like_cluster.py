@@ -12,8 +12,8 @@ parser.add_argument('--projection-factor', type=float, default=1.0 , help='proje
 parser.add_argument('--print-like-lists', action='store_true', default=False, help='whether to print the members of each Like(target_word, neighbour_of_target_word')
 parser.add_argument('--print-shared-member-counts', action='store_true', default=False, help='print how many members were shared with each cluster')
 parser.add_argument('--fill-graph', action='store_true', default=False, help='print list of words that participate in any cluster')
-parser.add_argument('--suppress-false-results', action='store_true', default=True, help="don't print that a pair doesn't cluster with each other")
-parser.add_argument('--suppress-true-results', action='store_true', default=False, help="don't print that a pair does cluster with each other")
+parser.add_argument('--show-false-results', action='store_true', default=False, help="report that a pair doesn't cluster with each other")
+parser.add_argument('--suppress-true-results', action='store_true', default=False, help="don't report that a pair does cluster with each other")
 parser.add_argument('--verbose', action='store_true', default=False, help='print everything')
 
 args = parser.parse_args()
@@ -92,8 +92,8 @@ for a in groups.keys():
             nonclusteringgroup.append(b)
     if len(clusteringgroup) > 0 and (not args.suppress_true_results) or args.verbose:
         print(a + " clusters with " + ', '.join(clusteringgroup))
-    if len(nonclusteringgroup) > 0 and (not args.suppress_false_results) or args.verbose:
-        print(a + " doesn't cluster with " + ', '.join(nonlusteringgroup))
+    if len(nonclusteringgroup) > 0 and (args.show_false_results) or args.verbose:
+        print(a + " doesn't cluster with " + ', '.join(nonclusteringgroup))
 
 if args.fill_graph:
     for word in all_cluster_members:
