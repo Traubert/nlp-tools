@@ -31,10 +31,16 @@ if args.word1 == args.word2 and not args.u:
     script += 'define TOP ' + fun + args.word1 + ')^' + str(args.n_closest) + ';\n'
 else:
     script += 'define TOP ' + fun + args.word1 + ', ' + args.word2 + ')^' + str(args.n_closest) + ';\n'
-pmatch2fst_process = Popen(["hfst-pmatch2fst"], stdin=PIPE, stdout=PIPE, stderr=PIPE)
+pmatch2fst_process = Popen(["hfst-pmatch2fst", "--cosine-distances"], stdin=PIPE, stdout=PIPE, stderr=PIPE)
 pmatch_out, err = pmatch2fst_process.communicate(input=script.encode('utf-8'))
 
-fst2strings_process = Popen(["hfst-fst2strings"], stdin=PIPE, stdout=PIPE, stderr=PIPE)
+fst2strings_process = Popen(["hfst-fst2strings", "--print-weights"], stdin=PIPE, stdout=PIPE, stderr=PIPE)
 fst2strings_out, err = fst2strings_process.communicate(input=pmatch_out)
-strings = str(fst2strings_out, "utf-8")
-print(strings)
+out_lines =  str(fst2strings_out, "utf-8").split("\n")
+scored_strings = []
+for line in out_lines:
+    if line != "":
+        parts = line.split("\t")
+        scored_strings.append((parts[0], float(parts[1])))
+for word, score in sorted(scored_strings, key = lambda x: x[1]):
+    print(word)
