@@ -1,6 +1,6 @@
 PYTHON_INCLUDE = -I/usr/include/python3.5m
 
-all: swig_wrap embutils_obj shared_obj
+all: shared_obj
 
 shared_obj: embutils_obj swig_obj
 	g++ -shared embutils.o embutils_wrap.o -o _embutils.so
