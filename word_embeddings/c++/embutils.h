@@ -3,6 +3,7 @@
 #include <time.h>
 #include <iomanip>
 #include <cmath>
+#include <cstdlib>
 #include <string>
 #include <sstream>
 #include <exception>
