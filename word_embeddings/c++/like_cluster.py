@@ -13,6 +13,7 @@ parser.add_argument('--fill-graph', action='store_true', default=False, help='pr
 parser.add_argument('--show-false-results', action='store_true', default=False, help="report that a pair doesn't cluster with each other")
 parser.add_argument('--suppress-true-results', action='store_true', default=False, help="don't report that a pair does cluster with each other")
 parser.add_argument('--verbose', action='store_true', default=False, help='print everything')
+parser.add_argument('--draw-graph', action='store_true', default=False, help='Write a picture of the graph as out.png')
 
 args = parser.parse_args()
 clusterword = args.target_word
@@ -26,15 +27,20 @@ get_words = lambda x: list(map(first, x))
 
 vecs = embutils.WordEmbeddings()
 vecs.load_from_file(wordvecfilename)
-words = get_words(vecs.like(clusterword, nwords))
+words_with_weights = vecs.like(clusterword, nwords)
+words = get_words(words_with_weights)
 
 groups = {}
+groups_with_weights = {}
 associations = {}
 
 groups[clusterword] = words
+groups_with_weights[clusterword] = words_with_weights
 for word2 in words:
     if word2 != clusterword:
-        groups[word2] = get_words(vecs.like(clusterword, word2, nwords, similarityfactor))
+        clusterwords_with_weights = vecs.like(clusterword, word2, nwords, similarityfactor)
+        groups[word2] = get_words(clusterwords_with_weights)
+        groups_with_weights[word2] = clusterwords_with_weights
 
 for key in groups:
     associations[key] = {}
@@ -79,3 +85,34 @@ for a in groups.keys():
 if args.fill_graph:
     for word in all_cluster_members:
         print(word)
+
+if args.draw_graph:
+        
+    import matplotlib.pyplot as plt
+    import networkx as nx
+
+    G=nx.Graph()
+
+    for a in groups.keys():
+        for b in groups.keys():
+            if a == b:
+                continue
+            if clusters_with(a, b):
+                G.add_edge(a, b, weight=vecs.get_distance(a, b))
+
+    edges = [(u,v) for (u,v,d) in G.edges(data=True)]
+    pos=nx.spring_layout(G)
+    nx.draw_networkx_nodes(G,pos,node_size=60)
+    nx.draw_networkx_edges(G,pos,edgelist=edges,
+                           width=1,alpha=0.1,edge_color='b')
+
+    def add_to_verticals(posdict, delta = 0.05):
+        retval = {}
+        for item, key in posdict.items():
+            retval[item] = (key[0], key[1] + delta)
+        return retval
+
+    nx.draw_networkx_labels(G, add_to_verticals(pos), font_size=10, font_family='sans-serif')
+
+    plt.axis('off')
+    plt.savefig("out.png", dpi = 500) # save as png
