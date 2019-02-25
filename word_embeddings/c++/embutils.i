@@ -27,4 +27,5 @@ struct WordEmbeddings {
                        unsigned int nwords = 10,
                        WordVecFloat vector_similarity_projection_factor = 1.0)
         const;
+    WordVecFloat get_distance(const std::string& word1, const std::string& word2) const;
 };

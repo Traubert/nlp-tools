@@ -3,13 +3,12 @@
 #include <time.h>
 #include <iomanip>
 #include <cmath>
-#include <cstdlib>
 #include <string>
-#include <sstream>
 #include <exception>
 #include <vector>
 #include <iostream>
 #include <fstream>
+#include <sstream>
 
 struct WordEmbedding;
 struct Vector;
@@ -47,6 +46,7 @@ struct WordEmbeddings: public WordEmbeddingVector {
 
     WordEmbedding get(const std::string & word) const;
     WordEmbedding get_exact(const std::string & word) const;
+    WordVecFloat get_distance(const std::string& word1, const std::string& word2) const;
 
     ScoredEmbeddings get_top_n(
         const Vector & comparison_point,

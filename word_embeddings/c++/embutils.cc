@@ -215,6 +215,13 @@ WordEmbedding WordEmbeddings::get_exact(const std::string & word) const
     throw std::runtime_error("requested word " + word + " not present");
 }
 
+WordVecFloat WordEmbeddings::get_distance(const std::string& word1, const std::string& word2) const
+{
+    WordEmbedding emb1 = get(word1);
+    WordEmbedding emb2 = get(word2);
+    return emb1.cosine_distance(emb2);
+}
+
 // Get the n best candidates in the original space using an insertion sort
 ScoredEmbeddings WordEmbeddings::get_top_n(const Vector & comparison_point,
                                            size_t n) const
