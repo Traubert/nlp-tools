@@ -23,6 +23,9 @@ typedef std::vector<ScoredEmbedding> ScoredEmbeddings;
 typedef std::pair<std::string, WordVecFloat> ScoredWord;
 typedef std::vector<ScoredWord> ScoredWords;
 
+// For swig
+typedef std::pair<std::string, WVector> WordWithVector;
+
 struct Vector: public WVector{
     WordVecFloat cached_norm;
 
@@ -46,6 +49,7 @@ struct WordEmbeddings: public WordEmbeddingVector {
 
     WordEmbedding get(const std::string & word) const;
     WordEmbedding get_exact(const std::string & word) const;
+    WordWithVector get_embedding(const std::string & word) const;
     WordVecFloat get_distance(const std::string& word1, const std::string& word2) const;
 
     ScoredEmbeddings get_top_n(

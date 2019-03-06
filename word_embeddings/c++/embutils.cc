@@ -215,6 +215,12 @@ WordEmbedding WordEmbeddings::get_exact(const std::string & word) const
     throw std::runtime_error("requested word " + word + " not present");
 }
 
+WordWithVector WordEmbeddings::get_embedding(const std::string & word) const
+{
+    WordEmbedding emb = get(word);
+    return WordWithVector(emb.word, emb.vector);
+}
+
 WordVecFloat WordEmbeddings::get_distance(const std::string& word1, const std::string& word2) const
 {
     WordEmbedding emb1 = get(word1);
