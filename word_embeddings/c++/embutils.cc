@@ -39,6 +39,7 @@ WordVecFloat WordEmbedding::cosine_distance(const Vector & other) const
 void WordEmbeddings::load_from_file(std::string filename)
 {
     clear();
+    dimension = 0;
     bool binary_format = false;
     if (filename.rfind(".bin") == filename.size() - 4) {
         binary_format = true;
@@ -47,7 +48,6 @@ void WordEmbeddings::load_from_file(std::string filename)
     std::ifstream infile;
     std::string line;
     size_t lexicon_size;
-    size_t dimension;
     infile.open(filename.c_str());
     if(!infile.good()) {
         std::cerr << "could not open vector file " << filename <<
@@ -217,8 +217,12 @@ WordEmbedding WordEmbeddings::get_exact(const std::string & word) const
 
 WordWithVector WordEmbeddings::get_embedding(const std::string & word) const
 {
-    WordEmbedding emb = get(word);
-    return WordWithVector(emb.word, emb.vector);
+    try {
+        WordEmbedding emb = get(word);
+        return WordWithVector(emb.word, emb.vector);
+    } catch (std::runtime_error & e) {
+        return WordWithVector("", WVector(dimension, 0.0));
+    }
 }
 
 WordVecFloat WordEmbeddings::get_distance(const std::string& word1, const std::string& word2) const

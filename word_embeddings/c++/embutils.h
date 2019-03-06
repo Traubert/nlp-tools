@@ -45,8 +45,9 @@ struct WordEmbedding {
 };
 
 struct WordEmbeddings: public WordEmbeddingVector {
+    size_t dimension;
+    
     void load_from_file(std::string filename);
-
     WordEmbedding get(const std::string & word) const;
     WordEmbedding get_exact(const std::string & word) const;
     WordWithVector get_embedding(const std::string & word) const;
