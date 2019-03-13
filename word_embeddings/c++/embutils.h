@@ -61,6 +61,10 @@ struct WordEmbeddings: public WordEmbeddingVector {
         const WordEmbedding & comparison_point,
         size_t n = 10) const;
 
+    ScoredWords get_words_at_distance_under(
+        const std::string & comparison_word,
+        WordVecFloat distance) const;
+
     ScoredEmbeddings get_top_n_in_transformed_space(
         size_t n,
         const WVector & comparison_point,
@@ -97,6 +101,7 @@ struct WordEmbeddings: public WordEmbeddingVector {
 
     ScoredWords unlike(const std::string & word1, const std::string & word2,
                        unsigned int nwords = 10, WordVecFloat vector_similarity_projection_factor = 1.0) const;
+
 };
 
 WordEmbedding operator-(WordEmbedding l, const WordEmbedding & r);

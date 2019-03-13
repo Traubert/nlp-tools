@@ -31,6 +31,12 @@ struct WordEmbeddings {
                        unsigned int nwords = 10,
                        WordVecFloat vector_similarity_projection_factor = 1.0)
         const;
+
+    ScoredWords get_words_at_distance_under(
+        const std::string & comparison_word,
+        WordVecFloat distance) const;
+    
     WordVecFloat get_distance(const std::string& word1, const std::string& word2) const;
+    
     WordWithVector get_embedding(const std::string & word) const;
 };

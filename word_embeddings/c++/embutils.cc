@@ -276,6 +276,35 @@ ScoredEmbeddings WordEmbeddings::get_top_n(const WordEmbedding & comparison_poin
     return get_top_n(comparison_point.vector, n);
 }
 
+ScoredWords WordEmbeddings::get_words_at_distance_under(
+    const std::string & comparison_word,
+    WordVecFloat distance) const
+{
+    WordEmbedding comparison_point = get(comparison_word);
+    ScoredWords retval;
+    for (auto it = begin(); it != end(); ++it) {
+        if (comparison_word == it->word) {
+            continue;
+        }
+        WordVecFloat cosdist = it->cosine_distance(comparison_point);
+        if (cosdist <= distance) {
+            ScoredWord new_val(it->word, cosdist);
+            for (size_t i = 0;; ++i) {
+                if (i == retval.size()) {
+                    retval.push_back(new_val);
+                    break;
+                } else if (retval[i].second <= cosdist) {
+                    continue;
+                } else {
+                    retval.insert(retval.begin() + i, new_val);
+                    break;
+                }
+            }
+        }
+    }
+    return retval;
+}
+
 // Get the n best candidates in the transformed space using an insertion sort
 ScoredEmbeddings WordEmbeddings::get_top_n_in_transformed_space(
     size_t n,
