@@ -1,7 +1,7 @@
 import os
 import re
 import hfst
-import postag
+import omorfi_postag
 
 class Finer:
     """
@@ -14,7 +14,7 @@ class Finer:
         directory of a finnish-tagtools package.
         """
         self.datadir = datadir
-        self.postagger = postag.TextTagger(self.datadir)
+        self.postagger = omorfi_postag.TextTagger(self.datadir)
         self.p1_tagger = hfst.PmatchContainer(self.datadir + "/proper_tagger_ph1.pmatch")
         self.p2_tagger = hfst.PmatchContainer(self.datadir + "/proper_tagger_ph2.pmatch")
 
