@@ -36,15 +36,9 @@ WordVecFloat WordEmbedding::cosine_distance(const Vector & other) const
     return vector.cosine_distance(other);
 }
 
-void WordEmbeddings::load_from_file(std::string filename)
+void WordEmbeddings::load_from_file(std::string filename,
+                                    float fraction)
 {
-    clear();
-    dimension = 0;
-    bool binary_format = false;
-    if (filename.rfind(".bin") == filename.size() - 4) {
-        binary_format = true;
-    }
-    char separator = ' ';
     std::ifstream infile;
     std::string line;
     size_t lexicon_size;
@@ -57,8 +51,38 @@ void WordEmbeddings::load_from_file(std::string filename)
     std::getline(infile, line);
     std::stringstream ss(line);
     ss >> lexicon_size;
+    infile.close();
+    load_from_file(filename,
+                   static_cast<unsigned int>(fraction * lexicon_size));
+}
+
+void WordEmbeddings::load_from_file(std::string filename,
+                                    unsigned int limit)
+{
+    clear();
+    dimension = 0;
+    bool binary_format = false;
+    if (filename.rfind(".bin") == filename.size() - 4) {
+        binary_format = true;
+    }
+    char separator = ' ';
+    std::ifstream infile;
+    std::string line;
+    unsigned int lexicon_size;
+    infile.open(filename.c_str());
+    if(!infile.good()) {
+        std::cerr << "could not open vector file " << filename <<
+            " for reading\n";
+        return;
+    }
+    std::getline(infile, line);
+    std::stringstream ss(line);
+    ss >> lexicon_size;
     ss.ignore(1);
     ss >> dimension;
+    if (limit > 0 && limit < lexicon_size) {
+        lexicon_size = limit;
+    }
     reserve(lexicon_size);
     size_t words_read = 0;
     if (binary_format) {

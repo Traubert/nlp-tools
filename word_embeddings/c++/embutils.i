@@ -12,13 +12,24 @@ typedef std::pair<std::string, WVector> WordWithVector;
 %include <std_string.i>
 %include <std_vector.i>
 %include <std_pair.i>
+%include <exception.i>
 %template(ScoredWord) std::pair<std::string, float>;
 %template(ScoredWords) std::vector<ScoredWord>;
 %template(WVector) std::vector<WordVecFloat>;
 %template(WordWithVector) std::pair<std::string, WVector>;
 
+%exception {
+    try { $action } catch (std::runtime_error & e) {
+        std::string s(e.what());
+        SWIG_exception(SWIG_RuntimeError, s.c_str());
+    }
+ }
+
 struct WordEmbeddings {
-    void load_from_file(std::string filename);
+    void load_from_file(std::string filename,
+                        unsigned int limit = 0);
+    void load_from_file(std::string filename,
+                        float fraction);
     ScoredWords like(const std::string & word,
                      unsigned int nwords = 10) const;
     
