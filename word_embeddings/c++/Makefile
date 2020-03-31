@@ -1,4 +1,4 @@
-PYTHON_INCLUDE = -I/usr/include/python3.5m
+PYTHON_INCLUDE = -I/usr/include/python3.7m
 CXXFLAGS = -std=c++11
 
 all: shared_obj
