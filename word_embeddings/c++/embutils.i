@@ -26,9 +26,9 @@ typedef std::pair<std::string, WVector> WordWithVector;
  }
 
 struct WordEmbeddings {
-    void load_from_file(std::string filename,
+    void load_from_file(const std::string & filename,
                         unsigned int limit = 0);
-    void load_from_file(std::string filename,
+    void load_from_file(const std::string & filename,
                         float fraction);
     ScoredWords like(const std::string & word,
                      unsigned int nwords = 10) const;

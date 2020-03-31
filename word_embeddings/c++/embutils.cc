@@ -36,28 +36,27 @@ WordVecFloat WordEmbedding::cosine_distance(const Vector & other) const
     return vector.cosine_distance(other);
 }
 
-void WordEmbeddings::load_from_file(std::string filename,
+void WordEmbeddings::load_from_file(const std::string & filename,
                                     float fraction)
 {
-    std::ifstream infile;
-    std::string line;
-    size_t lexicon_size;
-    infile.open(filename.c_str());
-    if(!infile.good()) {
-        std::cerr << "could not open vector file " << filename <<
-            " for reading\n";
-        return;
-    }
-    std::getline(infile, line);
-    std::stringstream ss(line);
-    ss >> lexicon_size;
-    infile.close();
     load_from_file(filename,
-                   static_cast<unsigned int>(fraction * lexicon_size));
+                   [=] (size_t lexicon_size) {
+                       return static_cast<unsigned int>(fraction * lexicon_size);
+                   });
 }
 
-void WordEmbeddings::load_from_file(std::string filename,
+void WordEmbeddings::load_from_file(const std::string & filename,
                                     unsigned int limit)
+{
+    load_from_file(filename,
+                   [=] (size_t lexicon_size) {
+                       return limit;
+                   });
+}
+
+void WordEmbeddings::load_from_file(
+    const std::string & filename,
+    std::function<unsigned int (size_t lexicon_size)> limiter)
 {
     clear();
     dimension = 0;
@@ -80,6 +79,7 @@ void WordEmbeddings::load_from_file(std::string filename,
     ss >> lexicon_size;
     ss.ignore(1);
     ss >> dimension;
+    unsigned int limit = limiter(lexicon_size);
     if (limit > 0 && limit < lexicon_size) {
         lexicon_size = limit;
     }

@@ -9,6 +9,7 @@
 #include <iostream>
 #include <fstream>
 #include <sstream>
+#include <functional>
 
 struct WordEmbedding;
 struct Vector;
@@ -47,10 +48,13 @@ struct WordEmbedding {
 struct WordEmbeddings: public WordEmbeddingVector {
     size_t dimension;
     
-    void load_from_file(std::string filename,
+    void load_from_file(const std::string & filename,
                         float fraction);
-    void load_from_file(std::string filename,
+    void load_from_file(const std::string & filename,
                         unsigned int limit = 0);
+    void load_from_file(
+        const std::string & filename,
+        std::function<unsigned int (size_t lexicon_size)> limiter);
     WordEmbedding get(const std::string & word) const;
     WordEmbedding get_exact(const std::string & word) const;
     WordWithVector get_embedding(const std::string & word) const;
