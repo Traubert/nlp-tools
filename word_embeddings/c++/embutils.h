@@ -11,6 +11,8 @@
 #include <sstream>
 #include <functional>
 
+#include "immintrin.h"
+
 struct WordEmbedding;
 struct Vector;
 
@@ -45,6 +47,27 @@ struct WordEmbedding {
     WordVecFloat cosine_distance(const Vector & other) const;
 };
 
+class LikeUnlikeTransformer {
+    WVector comparison_point_cache;
+    WVector plane_vec;
+    bool negative;
+    WordVecFloat plane_vec_square_sum;
+    WordVecFloat comparison_point_norm;
+    WordVecFloat translation_term;
+    WordVecFloat projection_factor;
+    
+public:
+    LikeUnlikeTransformer(
+        const WVector & first_point,
+        const WVector & second_point,
+        bool is_negative,
+        WordVecFloat vector_similarity_projection_factor = 1.0);
+
+    Vector operator() (const Vector & original);
+
+    const WVector & get_comparison_point(void) { return comparison_point_cache; }
+};
+
 struct WordEmbeddings: public WordEmbeddingVector {
     size_t dimension;
     
@@ -61,11 +84,11 @@ struct WordEmbeddings: public WordEmbeddingVector {
     WordVecFloat get_distance(const std::string& word1, const std::string& word2) const;
 
     ScoredEmbeddings get_top_n(
-        const Vector & comparison_point,
+        const Vector & _comparison_point,
         size_t n = 10) const;
 
     ScoredEmbeddings get_top_n(
-        const WordEmbedding & comparison_point,
+        const WordEmbedding & _comparison_point,
         size_t n = 10) const;
 
     ScoredWords get_words_at_distance_under(
@@ -79,6 +102,10 @@ struct WordEmbeddings: public WordEmbeddingVector {
         WordVecFloat translation_term,
         bool negative,
         WordVecFloat vector_similarity_projection_factor = 1.0) const;
+
+    ScoredEmbeddings get_top_n_in_transformed_space(
+        size_t n,
+        LikeUnlikeTransformer transformer) const;
 
     ScoredWords get_top_n_words_in_transformed_space(
         size_t n,
@@ -120,6 +147,5 @@ WVector scalar_multiplication(WordVecFloat l, WVector r);
 WordVecFloat dot_product(const WVector & l, const WVector & r);
 WordVecFloat square_sum(const Vector & v);
 WordVecFloat square_sum(const WVector & v);
-//WordVecFloat norm(const Vector & v);
 WordVecFloat norm(const WVector & v);
 

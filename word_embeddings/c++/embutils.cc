@@ -8,11 +8,6 @@ Vector::Vector(WVector v): WVector(v) {
     cache_norm();
 }
     
-    // Vector(const WordVecFloat * begin, const WordVecFloat * end) {
-    //     assign(begin, end);
-    //     cache_norm();
-    // }
-
 void Vector::cache_norm(void) {
     cached_norm = norm(*this);
 }
@@ -329,18 +324,84 @@ ScoredWords WordEmbeddings::get_words_at_distance_under(
     return retval;
 }
 
+LikeUnlikeTransformer::LikeUnlikeTransformer(
+    const WVector & first_point,
+    const WVector & second_point,
+    bool is_negative,
+    WordVecFloat vector_similarity_projection_factor):
+    negative(is_negative),
+    projection_factor(vector_similarity_projection_factor)
+{
+
+    /*
+     * When there are two vectors A and B, we compute the vector A - B that
+     * goes from one to the other, and define a hyperplane orthogonal to that
+     * vector that intersects the vector at the midpoint between the
+     * two. We then add to all vectors a multiple of A - B to move them closer
+     * to the plane, reducing the distance that is due to the difference
+     * between A and B. (This is like projecting the space to the hyperplane
+     * if we go all the way to the plane)
+     *
+     * The hyperplane is defined by the equation |B - A| = d, where d is a
+     * translation term. |B - A| = 0 would be the set of vectors orthogonal to
+     * |B - A|. We set d so that the distance from the hyperplane to A is
+     * half of the norm of |B - A|.
+     *
+     */
+
+    plane_vec = first_point - second_point;
+    plane_vec_square_sum = square_sum(plane_vec);
+    translation_term = dot_product(plane_vec, first_point)
+        - plane_vec_square_sum * 0.5;
+
+    if (is_negative == true) {
+        WordVecFloat comparison_scaler =
+            (translation_term - dot_product(first_point, plane_vec)) / plane_vec_square_sum;
+        comparison_scaler *= vector_similarity_projection_factor;
+        comparison_point_cache = first_point - scalar_multiplication(comparison_scaler, plane_vec);
+    } else {
+        comparison_point_cache = second_point + scalar_multiplication(static_cast<WordVecFloat>(0.5), plane_vec);
+    }
+    plane_vec_square_sum = square_sum(plane_vec);
+    comparison_point_norm = norm(comparison_point_cache);
+
+}
+
+Vector LikeUnlikeTransformer::operator() (const Vector & original)
+{
+    Vector transformed(original);
+    /*
+     * Given a plane "plane_vec = translation term" and a point,
+     * find the multiple of plane_vec which produces a vector going
+     * from point to the nearest point in the plane.
+     */
+    
+    WordVecFloat transformed_vec_scaler =
+        (translation_term - dot_product(transformed, plane_vec))
+        / plane_vec_square_sum;
+    transformed_vec_scaler *= projection_factor;
+    if(negative) {
+        transformed =
+            Vector(transformed - scalar_multiplication(transformed_vec_scaler, plane_vec));
+    } else {
+        transformed =
+            Vector(transformed + scalar_multiplication(transformed_vec_scaler, plane_vec));
+    }
+    return transformed;
+}
+
 // Get the n best candidates in the transformed space using an insertion sort
 ScoredEmbeddings WordEmbeddings::get_top_n_in_transformed_space(
     size_t n,
-    const WVector & comparison_point,
+    const WVector & _comparison_point,
     const WVector & plane_vec,
     WordVecFloat translation_term,
     bool negative,
     WordVecFloat vector_similarity_projection_factor) const
 {
     ScoredEmbeddings retval;
+    Vector comparison_point(_comparison_point);
     WordVecFloat plane_vec_square_sum = square_sum(plane_vec);
-    WordVecFloat comparison_point_norm = norm(comparison_point);
     for (WordEmbeddings::const_iterator it = this->begin();
          it != this->end(); ++it) {
         Vector transformed_vec(it->vector);
@@ -362,8 +423,7 @@ ScoredEmbeddings WordEmbeddings::get_top_n_in_transformed_space(
             transformed_vec =
                 Vector(transformed_vec + scalar_multiplication(transformed_vec_scaler, plane_vec));
         }
-        WordVecFloat cosdist = 1 - dot_product(transformed_vec, comparison_point)
-            / (transformed_vec.get_norm() * comparison_point_norm);
+        WordVecFloat cosdist = comparison_point.cosine_distance(transformed_vec);
         retval.reserve(n + 1);
         for (size_t i = retval.size();; --i) {
             if (i == 0) {
@@ -395,46 +455,42 @@ ScoredEmbeddings WordEmbeddings::get_top_n_in_transformed_space(
     return retval;
 }
 
-// Get the n best candidates in the transformed space using an insertion sort
 ScoredWords WordEmbeddings::get_top_n_words_in_transformed_space(
     size_t n,
-    const WVector & comparison_point,
+    const WVector & _comparison_point,
     const WVector & plane_vec,
     WordVecFloat translation_term,
     bool negative,
     WordVecFloat vector_similarity_projection_factor) const
 {
+    ScoredEmbeddings embs = get_top_n_in_transformed_space(
+        n, _comparison_point, plane_vec, translation_term, negative,
+        vector_similarity_projection_factor);
     ScoredWords retval;
-    WordVecFloat plane_vec_square_sum = square_sum(plane_vec);
-    WordVecFloat comparison_point_norm = norm(comparison_point);
+    retval.reserve(embs.size());
+    for (auto it = embs.begin(); it != embs.end(); ++it) {
+        std::string word = (it->first).word;
+        retval.push_back(ScoredWord(word, it->second));
+    }
+    return retval;
+}
+
+ScoredEmbeddings WordEmbeddings::get_top_n_in_transformed_space(
+    size_t n,
+    LikeUnlikeTransformer transformer) const
+{
+    ScoredEmbeddings retval;
+    Vector comparison_point(transformer.get_comparison_point());
     for (WordEmbeddings::const_iterator it = this->begin();
          it != this->end(); ++it) {
-        Vector transformed_vec(it->vector);
-
-        /*
-         * First, given a plane "plane_vec = translation term" and a point,
-         * find the multiple of plane_vec which produces a vector going
-         * from point to the nearest point in the plane.
-         */
-
-        WordVecFloat transformed_vec_scaler =
-            (translation_term - dot_product(transformed_vec, plane_vec))
-            / plane_vec_square_sum;
-        transformed_vec_scaler *= vector_similarity_projection_factor;
-        if(negative) {
-            transformed_vec =
-                Vector(transformed_vec - scalar_multiplication(transformed_vec_scaler, plane_vec));
-        } else {
-            transformed_vec =
-                Vector(transformed_vec + scalar_multiplication(transformed_vec_scaler, plane_vec));
-        }
-        WordVecFloat cosdist = 1 - dot_product(transformed_vec, comparison_point)
-            / (transformed_vec.get_norm() * comparison_point_norm);
+        Vector transformed_vec = transformer(it->vector);
+        WordVecFloat cosdist = comparison_point.cosine_distance(transformed_vec);
         retval.reserve(n + 1);
         for (size_t i = retval.size();; --i) {
             if (i == 0) {
                 // We got to the top
-                ScoredWord new_val(it->word, cosdist);
+                ScoredEmbedding new_val = std::pair<WordEmbedding, WordVecFloat>(
+                    WordEmbedding(*it), cosdist);
                 retval.insert(retval.begin(), new_val);
                 break;
             } else if (cosdist >= retval[i - 1].second) {
@@ -443,7 +499,8 @@ ScoredWords WordEmbeddings::get_top_n_words_in_transformed_space(
                     // We didn't make the list
                 } else {
                     // We make this a new list member
-                    ScoredWord new_val(it->word, cosdist);
+                    ScoredEmbedding new_val = std::pair<WordEmbedding, WordVecFloat>(
+                        WordEmbedding(*it), cosdist);
                     retval.insert(retval.begin() + i, new_val);
                 }
                 break;
