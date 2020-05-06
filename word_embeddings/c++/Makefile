@@ -1,5 +1,5 @@
 PYTHON_INCLUDE = -I/usr/include/python3.7m
-CXXFLAGS = -std=c++14 # -fopt-info-vec-optimized
+CXXFLAGS = -std=c++17
 
 all: shared_obj
 
