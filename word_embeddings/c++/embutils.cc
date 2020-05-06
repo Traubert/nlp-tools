@@ -4,7 +4,7 @@ Vector::Vector(void) {
     cached_norm = 0.0;
 }
 
-Vector::Vector(WVector v): WVector(v) {
+Vector::Vector(RawVector v): RawVector(v) {
     cache_norm();
 }
     
@@ -109,7 +109,7 @@ void WordEmbeddings::load_from_file(
                 break;
             }
             std::string word = line.substr(0, pos);
-            WVector components;
+            RawVector components;
             components.reserve(dimension);
             size_t nextpos;
             while (std::string::npos != (nextpos = line.find(separator, pos + 1))) {
@@ -240,7 +240,7 @@ WordWithVector WordEmbeddings::get_embedding(const std::string & word) const
         WordEmbedding emb = get(word);
         return WordWithVector(emb.word, emb.vector);
     } catch (std::runtime_error & e) {
-        return WordWithVector("", WVector(dimension, 0.0));
+        return WordWithVector("", RawVector(dimension, 0.0));
     }
 }
 
@@ -325,8 +325,8 @@ ScoredWords WordEmbeddings::get_words_at_distance_under(
 }
 
 LikeUnlikeTransformer::LikeUnlikeTransformer(
-    const WVector & first_point,
-    const WVector & second_point,
+    const RawVector & first_point,
+    const RawVector & second_point,
     bool is_negative,
     WordVecFloat vector_similarity_projection_factor):
     negative(is_negative),
@@ -393,8 +393,8 @@ Vector LikeUnlikeTransformer::operator() (const Vector & original)
 // Get the n best candidates in the transformed space using an insertion sort
 ScoredEmbeddings WordEmbeddings::get_top_n_in_transformed_space(
     size_t n,
-    const WVector & _comparison_point,
-    const WVector & plane_vec,
+    const RawVector & _comparison_point,
+    const RawVector & plane_vec,
     WordVecFloat translation_term,
     bool negative,
     WordVecFloat vector_similarity_projection_factor) const
@@ -457,30 +457,23 @@ ScoredEmbeddings WordEmbeddings::get_top_n_in_transformed_space(
 
 ScoredWords WordEmbeddings::get_top_n_words_in_transformed_space(
     size_t n,
-    const WVector & _comparison_point,
-    const WVector & plane_vec,
+    const RawVector & _comparison_point,
+    const RawVector & plane_vec,
     WordVecFloat translation_term,
     bool negative,
     WordVecFloat vector_similarity_projection_factor) const
 {
-    ScoredEmbeddings embs = get_top_n_in_transformed_space(
+    return get_top_n_in_transformed_space(
         n, _comparison_point, plane_vec, translation_term, negative,
         vector_similarity_projection_factor);
-    ScoredWords retval;
-    retval.reserve(embs.size());
-    for (auto it = embs.begin(); it != embs.end(); ++it) {
-        std::string word = (it->first).word;
-        retval.push_back(ScoredWord(word, it->second));
-    }
-    return retval;
 }
 
 ScoredEmbeddings WordEmbeddings::get_top_n_in_transformed_space(
     size_t n,
-    LikeUnlikeTransformer transformer) const
+    LikeUnlikeTransformerChain transformer) const
 {
     ScoredEmbeddings retval;
-    Vector comparison_point(transformer.get_comparison_point());
+    Vector comparison_point(transformer.get_final_comparison_point());
     for (WordEmbeddings::const_iterator it = this->begin();
          it != this->end(); ++it) {
         Vector transformed_vec = transformer(it->vector);
@@ -516,7 +509,13 @@ ScoredEmbeddings WordEmbeddings::get_top_n_in_transformed_space(
     return retval;
 }
 
-// Get the n best candidates in the original space using an insertion sort
+ScoredWords WordEmbeddings::get_top_n_words_in_transformed_space(
+    size_t n,
+    LikeUnlikeTransformerChain transformer) const
+{
+    return get_top_n_in_transformed_space(n, transformer);
+}
+
 ScoredWords WordEmbeddings::get_top_n_words(const Vector & comparison_point,
                                             size_t n) const
 {
@@ -547,44 +546,66 @@ ScoredWords WordEmbeddings::like(const std::string & word1, const std::string & 
 {
     WordEmbedding this_word1 = get(word1);
     WordEmbedding this_word2 = get(word2);
-
-    /*
-     * When there are two vectors A and B, we compute the vector A - B that
-     * goes from one to the other, and define a hyperplane orthogonal to that
-     * vector that intersects the vector at the midpoint between the
-     * two. We then add to all vectors a multiple of A - B to move them closer
-     * to the plane, reducing the distance that is due to the difference
-     * between A and B. (This is like projecting the space to the hyperplane
-     * if we go all the way to the plane)
-     *
-     * The hyperplane is defined by the equation |B - A| = d, where d is a
-     * translation term. |B - A| = 0 would be the set of vectors orthogonal to
-     * |B - A|. We set d so that the distance from the hyperplane to A is
-     * half of the norm of |B - A|.
-     *
-     */
-
-    WVector B_minus_A = this_word1.vector - this_word2.vector;
-    WordVecFloat square_sum_B_minus_A = square_sum(B_minus_A);
-    WordVecFloat hyperplane_translation_term = dot_product(B_minus_A, this_word1.vector)
-        - square_sum_B_minus_A * 0.5;
-
-    WVector comparison_point;
-    if (is_negative == true) {
-        WordVecFloat comparison_scaler =
-            (hyperplane_translation_term - dot_product(this_word1.vector, B_minus_A)) / square_sum_B_minus_A;
-        comparison_scaler *= vector_similarity_projection_factor;
-        comparison_point = this_word1.vector - scalar_multiplication(comparison_scaler, B_minus_A);
-    } else {
-        comparison_point = this_word2.vector + scalar_multiplication(static_cast<WordVecFloat>(0.5), B_minus_A);
-    }
-
+    LikeUnlikeTransformerChain chain;
+    LikeUnlikeTransformer transformer(this_word1.vector, this_word2.vector, is_negative, vector_similarity_projection_factor);
+    chain.push_back(transformer);
     return get_top_n_words_in_transformed_space(nwords,
-                                                comparison_point,
-                                                B_minus_A,
-                                                hyperplane_translation_term,
-                                                is_negative,
-                                                vector_similarity_projection_factor);
+                                                chain);
+}
+
+void LikeArgs::embed(const WordEmbeddings & embs)
+{
+    if (left) { left->embed(embs); }
+    if (right) { right->embed(embs); }
+    if (embedding.word.size() > 0) {
+        embedding = embs.get(embedding.word);
+    }
+}
+
+LikeUnlikeTransformerChain LikeArgs::get_transformer_chain(void)
+{
+    LikeUnlikeTransformerChain retval;
+    if (left->is_leaf() && right->is_leaf()) {
+        retval.push_back(LikeUnlikeTransformer(left->embedding.vector,
+                                               right->embedding.vector,
+                                               negative,
+                                               projection_factor));
+        return retval;
+    } else if (right->is_leaf()) {
+        LikeUnlikeTransformerChain l = left->get_transformer_chain();
+        retval.insert(retval.end(), l.begin(), l.end());
+        LikeUnlikeTransformer root(retval.get_final_comparison_point(),
+                                   right->embedding.vector,
+                                   negative,
+                                   projection_factor);
+        retval.push_back(root);
+        return retval;
+    }
+    LikeUnlikeTransformerChain l = left->get_transformer_chain();
+    retval.insert(retval.end(), l.begin(), l.end());
+    LikeUnlikeTransformerChain r = right->get_transformer_chain();
+    retval.insert(retval.end(), r.begin(), r.end());
+    return retval;
+}
+
+ScoredWords WordEmbeddings::like(LikeArgs args,
+                                 unsigned int nwords) const
+{
+//    auto embedder = std::bind(&WordEmbeddings::get, *this);
+//    std::function<WordEmbedding (const std::string & word)> embedder_fobj(embedder);
+    args.embed(*this);
+    // turn strings into Vectors
+    LikeUnlikeTransformerChain transformer = args.get_transformer_chain();
+    // needs to able to chain computations
+    return get_top_n_words_in_transformed_space(nwords, transformer);
+    // WordEmbedding this_word1 = get(word1);
+    // WordEmbedding this_word2 = get(word2);
+    // WordEmbedding this_word3 = get(word3);
+    // LikeUnlikeTransformer transformer(this_word1.vector, this_word2.vector, is_negative, vector_similarity_projection_factor);
+    // RawVector comparison = transformer.get_comparison_point();
+    // LikeUnlikeTransformer transformer2(comparison, transformer(this_word3.vector), is_negative, vector_similarity_projection_factor);
+    // return get_top_n_words_in_transformed_space(nwords,
+    //                                             transformer2);
 }
 
 ScoredWords WordEmbeddings::like(const std::string & word1, const std::string & word2,
@@ -601,30 +622,8 @@ ScoredWords WordEmbeddings::unlike(const std::string & word1, const std::string 
     return like(word1, word2, nwords, true, vector_similarity_projection_factor);
 }
 
-WordEmbedding operator-(WordEmbedding l,
-                        const WordEmbedding & r)
-{
-    for(size_t i = 0; i < l.vector.size(); ++i) {
-        l.vector[i] -= r.vector[i];
-    }
-    l.vector.cache_norm();
-    l.word = "";
-    return l;
-}
-
-WordEmbedding operator+(WordEmbedding l,
-                        const WordEmbedding & r)
-{
-    for(size_t i = 0; i < l.vector.size(); ++i) {
-        l.vector[i] += r.vector[i];
-    }
-    l.vector.cache_norm();
-    l.word = "";
-    return l;
-}
-
-WVector operator-(WVector l,
-                 const WVector & r)
+RawVector operator-(RawVector l,
+                 const RawVector & r)
 {
     for(size_t i = 0; i < l.size(); ++i) {
         l[i] -= r[i];
@@ -632,8 +631,8 @@ WVector operator-(WVector l,
     return l;
 }
 
-WVector operator+(WVector l,
-                 const WVector & r)
+RawVector operator+(RawVector l,
+                 const RawVector & r)
 {
     for(size_t i = 0; i < l.size(); ++i) {
         l[i] += r[i];
@@ -641,8 +640,8 @@ WVector operator+(WVector l,
     return l;
 }
 
-WVector pointwise_multiplication(WVector l,
-                                const WVector & r)
+RawVector pointwise_multiplication(RawVector l,
+                                const RawVector & r)
 {
     for(size_t i = 0; i < r.size(); ++i) {
         l[i] *= r[i];
@@ -650,8 +649,8 @@ WVector pointwise_multiplication(WVector l,
     return l;
 }
 
-WVector scalar_multiplication(WordVecFloat l,
-                              WVector r)
+RawVector scalar_multiplication(WordVecFloat l,
+                                RawVector r)
 {
     for(size_t i = 0; i < r.size(); ++i) {
         r[i] *= l;
@@ -659,8 +658,8 @@ WVector scalar_multiplication(WordVecFloat l,
     return r;
 }
 
-WordVecFloat dot_product(const WVector & l,
-                         const WVector & r)
+WordVecFloat dot_product(const RawVector & l,
+                         const RawVector & r)
 {
     WordVecFloat ret = 0;
     for(size_t i = 0; i < l.size(); ++i) {
@@ -669,7 +668,7 @@ WordVecFloat dot_product(const WVector & l,
     return ret;
 }
 
-WordVecFloat square_sum(const Vector & v)
+template <typename T> WordVecFloat square_sum(const std::vector<T> & v)
 {
     WordVecFloat ret = 0;
     for(size_t i = 0; i < v.size(); ++i) {
@@ -678,16 +677,21 @@ WordVecFloat square_sum(const Vector & v)
     return ret;
 }
 
-WordVecFloat square_sum(const WVector & v)
-{
-    WordVecFloat ret = 0;
-    for(size_t i = 0; i < v.size(); ++i) {
-        ret += v[i] * v[i];
-    }
-    return ret;
-}
-
-WordVecFloat norm(const WVector & v)
+WordVecFloat norm(const RawVector & v)
 {
     return sqrt(square_sum(v));
+}
+
+int main(void)
+{
+    WordEmbeddings embs;
+    embs.load_from_file("/srv/data/word2vec/GoogleNews-vectors-negative300.bin", 100000u);
+//    auto like1 = std::make_shared<LikeArgs>("mouse", "keyboard", false);
+//    auto like2 = std::make_shared<LikeArgs>("joystick", "cheese", true);
+    LikeArgs like(LikeArgs("mouse", "keyboard", false), LikeArgs("screen"), true);
+//    like.left = like1;
+//    like.right = like2;
+    for (auto it : embs.like(like)) {
+        std::cerr << "('" << it.first << "', " << it.second << ")," << std::endl;
+    }
 }
