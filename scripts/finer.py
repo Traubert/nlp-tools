@@ -98,7 +98,7 @@ class Finer:
             ("tieto#", "tiedot#"),
         ]
         
-        self.regex_filename = '/srv/data/tmp/finnish-tagtools-1.4.0/tag/lemma-errors.tsv'
+        self.regex_filename = self.datadir + 'lemma-errors.tsv'
         self.regexes = []
         for line in open(self.regex_filename, 'r'):
             w_patt, l_patt, l_new = line.strip().split('\t')
