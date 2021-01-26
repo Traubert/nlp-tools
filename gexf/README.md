@@ -9,7 +9,7 @@ Compiling and running semgraph.java:
 * If your system is configured nicely, you don't need to worry about $CLASSPATH, but if compiling doesn't work, figure out where your Java libraries are and explicitly tell javac, as in:
 
 ```bash
-javac -cp "/usr/share/java/*:./gephi-toolkit-0.9.2-all.jar" semgraph.java
+javac -cp "/usr/share/java/*:./gephi-toolkit-0.9.2-all.jar" graphgen.java
 ```
 
 Then you can run it like:
