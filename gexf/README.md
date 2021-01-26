@@ -26,5 +26,5 @@ java -cp "/usr/share/java/*:./gephi-toolkit-0.9.2-all.jar:." Main -i /path/to/in
 
 to not generate ego graphs, but just run 100 rounds of ForceAtlas2 on a graph. To tweak beyond that, you currently have to edit the code.
 
-Good luck!
+The Gephi toolkit apidocs are [here](https://gephi.org/gephi-toolkit/0.9.2/apidocs/). Good luck!
 
