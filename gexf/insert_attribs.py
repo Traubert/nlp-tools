@@ -78,14 +78,13 @@ for node in tree.xpath('//g:node', namespaces=nsmap):
     for pair in attpairs:
         if 'korp_url' == pair[0]:
             write_korp = False
-        elif 'egourl' == pair[0]:
-            write_ego = False
     label = node.get('label')
     if not label:
         continue
     if write_korp:
         korp_url = make_url_korp(label)
-        korp_url_element = etree.Element("attvalue", nsmap=nsmap, id="korp_url", title="See in Korp", type="string", value = korp_url)
+        korp_url_element = etree.Element("attvalue", nsmap=nsmap, title="See in Korp", type="string", value = korp_url)
+        korp_url.element.set("for", "korp_url")
         attributes.append(korp_url_element)
     if args.swap_translation or write_translation:
         translation_attvalue = node.find(".//attvalue[@for='translation']", namespaces=base_nsmap)
@@ -101,9 +100,16 @@ for node in tree.xpath('//g:node', namespaces=nsmap):
             ego_url = ''
         else:
             ego_url = make_url_ego(label)
-        ego_url_element = etree.Element("attvalue", nsmap=nsmap, id="egourl", title="Go to this ego graph", type="string", value = ego_url)
-        attributes.append(ego_url_element)
-
+        ego_url_element = node.find(".//attvalue[@for='egourl']", namespaces=base_nsmap)
+        if ego_url_element is None:
+            ego_url_element = node.find(".//attvalue[@id='egourl']", namespaces=base_nsmap)
+        if ego_url_element is None:
+            ego_url_element = etree.Element("attvalue", nsmap=nsmap)
+            attributes.append(ego_url_element)
+        ego_url_element.set("for", "egourl")
+        ego_url_element.set("value", ego_url)
+        ego_url_element.set("title", "Go to this ego graph")
+        ego_url_element.set("type", "string")
 
 #    node.set('attvalues', attributes)
 
