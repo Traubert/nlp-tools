@@ -1,4 +1,7 @@
 from lxml import etree
+import sknetwork
+import numpy as np
+from scipy import sparse
 
 xmlns_url = "http://www.gexf.net/1.3"
 xmlns_viz_url = "http://www.gexf.net/1.3/viz"
@@ -17,6 +20,43 @@ def make_node(index, label, size = 1.0, xpos = 0.0, ypos = 0.0, color = (255, 25
     element.append(etree.Element(viz_positiontag, x = str(xpos), y = str(ypos)))
     element.append(etree.Element(viz_colortag, r = str(color[0]), g = str(color[1]), b = str(color[2])))
     return element
+
+def adjacency2edgelist(adjacency, undirected = True):
+    '''
+    Convert a matrix, typically in scipy.sparse.csr_matrix form, into an edge list
+    '''
+    coord_matrix = sparse.coo_matrix(adjacency)
+    return list(zip(coord_matrix.row, coord_matrix.col, coord_matrix.data))
+
+def from_edgelist(edgelist, labels, embedding = None):
+    xml = etree.Element("gexf",
+                        version="1.3",
+                        nsmap=nsmap,
+                        schemaLocation_qname = schemaLocation_val)
+    graph = etree.Element("graph", mode="static", defaultedgetype="undirected")
+    nodes = etree.Element("nodes")
+    edges = etree.Element("edges")
+
+    for edge in edgelist:
+        source, destination, weight = edge[0] + 1, edge[1] + 1, 1.0
+        if len(edge) > 2:
+            weight = edge[2]
+        edges.append(etree.Element("edge", id=str(len(edges)), source=str(source), target=str(destination), weight=str(weight)))
+
+    for i, label in enumerate(labels):
+        xpos = ypos = 0.0
+        if embedding:
+            xpos, ypos = embedding[i][0], embedding[i][1]
+        nodes.append(make_node(str(i + 1), label, xpos = xpos, ypos = ypos))
+    
+    graph.append(nodes)
+    graph.append(edges)
+    xml.append(graph)
+    
+    return str(etree.tostring(xml, xml_declaration=True, pretty_print = True, encoding = "utf-8"), "utf-8")
+
+def from_adjacency(adjacency, labels, embedding = None):
+    return from_edgelist(adjacency2edgelist(adjacency, undirected = True), labels, embedding)
 
 def from_tuples(pairs):
     xml = etree.Element("gexf",
@@ -56,4 +96,9 @@ if __name__ == '__main__':
     print("Testing make_gexf.py:")
     my_edges = [(("dog", "cat"), 1.5), (("elephant", "monkey"), 2.1)]
     print(from_tuples(my_edges))
-
+    print()
+    print("Testing from_edgelist:")
+    adjacency = np.array([[0, 1, 1, 0], [1, 0, 1, 1], [1, 1, 0, 0], [0, 1, 0, 0]])
+    adjacency = sparse.csr_matrix(adjacency)
+    labels = ["foo", "bar", "baz", "boz"]
+    print(from_adjacency(adjacency, labels))
