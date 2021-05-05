@@ -46,7 +46,7 @@ def make_url_korp(word):
     if '_' in word:
         word = word[:word.rindex('_')]
     encoded_word = urllib.parse.quote(word)
-    return f'https://korp.csc.fi/?mode=other_languages#?lang=en&cqp=%5Blemma%20%3D%20%22{encoded_word}%22%5D&corpus=oracc_adsd,oracc_ario,oracc_blms,oracc_cams,oracc_caspo,oracc_ctij,oracc_dcclt,oracc_dccmt,oracc_ecut,oracc_etcsri,oracc_hbtin,oracc_obmc,oracc_riao,oracc_ribo,oracc_rimanum,oracc_rinap,oracc_saao,oracc_others&stats_reduce=word&search_tab=1&search=cqp'
+    return 'https://korp.csc.fi/?mode=other_languages#?lang=en&cqp=%5Blemma%20%3D%20%22{word}%22%5D&corpus=oracc_adsd,oracc_ario,oracc_blms,oracc_cams,oracc_caspo,oracc_ctij,oracc_dcclt,oracc_dccmt,oracc_ecut,oracc_etcsri,oracc_hbtin,oracc_obmc,oracc_riao,oracc_ribo,oracc_rimanum,oracc_rinap,oracc_saao,oracc_others&stats_reduce=word&search_tab=1&search=cqp'.format(word=encoded_word)
 
 this_ego = ""
 if "egograph_" in args.input:
