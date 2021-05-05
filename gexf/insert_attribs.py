@@ -84,7 +84,7 @@ for node in tree.xpath('//g:node', namespaces=nsmap):
     if write_korp:
         korp_url = make_url_korp(label)
         korp_url_element = etree.Element("attvalue", nsmap=nsmap, title="See in Korp", type="string", value = korp_url)
-        korp_url.element.set("for", "korp_url")
+        korp_url_element.set("for", "korp_url")
         attributes.append(korp_url_element)
     if args.swap_translation or write_translation:
         translation_attvalue = node.find(".//attvalue[@for='translation']", namespaces=base_nsmap)
