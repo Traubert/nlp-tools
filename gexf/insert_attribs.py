@@ -88,7 +88,7 @@ for node in tree.xpath('//g:node', namespaces=nsmap):
             korp_url_element = node.find(".//attvalue[@id='korp_url']", namespaces=base_nsmap)
         if korp_url_element is None:
             korp_url_element = etree.Element("attvalue", nsmap=nsmap)
-            attributes.append(ego_url_element)
+            attributes.append(korp_url_element)
         korp_url_element.set("for", "korp_url")
         korp_url_element.set("value", korp_url)
         korp_url_element.set("title", "See in Korp")
