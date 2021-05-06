@@ -75,17 +75,24 @@ for node in tree.xpath('//g:node', namespaces=nsmap):
     write_translation = (args.write_translations_from != None)
     attributes = node.xpath('g:attvalues', namespaces=nsmap)[0]
     attpairs = list(map(lambda x: x.values(), attributes.iterchildren()))
-    for pair in attpairs:
-        if 'korp_url' == pair[0]:
-            write_korp = False
+    # for pair in attpairs:
+    #     if 'korp_url' == pair[0]:
+    #         write_korp = False
     label = node.get('label')
     if not label:
         continue
     if write_korp:
         korp_url = make_url_korp(label)
-        korp_url_element = etree.Element("attvalue", nsmap=nsmap, title="See in Korp", type="string", value = korp_url)
+        korp_url_element = node.find(".//attvalue[@for='korp_url']", namespaces=base_nsmap)
+        if korp_url_element is None:
+            korp_url_element = node.find(".//attvalue[@id='korp_url']", namespaces=base_nsmap)
+        if korp_url_element is None:
+            korp_url_element = etree.Element("attvalue", nsmap=nsmap)
+            attributes.append(ego_url_element)
         korp_url_element.set("for", "korp_url")
-        attributes.append(korp_url_element)
+        korp_url_element.set("value", korp_url)
+        korp_url_element.set("title", "See in Korp")
+        korp_url_element.set("type", "string")
     if args.swap_translation or write_translation:
         translation_attvalue = node.find(".//attvalue[@for='translation']", namespaces=base_nsmap)
         if write_translation and label in translations:
@@ -113,8 +120,8 @@ for node in tree.xpath('//g:node', namespaces=nsmap):
 
 #    node.set('attvalues', attributes)
 
-tree.write(args.output, xml_declaration=True, pretty_print = True, encoding = "utf-8")
-#xml_string = str(etree.tostring(tree, xml_declaration=True, pretty_print = True, encoding = "utf-8"), "utf-8")
-#print(xml_string)
-
+#tree.write(args.output, xml_declaration=True, pretty_print = True, encoding = "utf-8")
+xml_string = str(etree.tostring(tree, xml_declaration=True, pretty_print = True, encoding = "utf-8"), "utf-8").replace('&amp;', '&')
+writeobj = open(args.output, 'w')
+writeobj.write(xml_string)
 
