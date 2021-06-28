@@ -17,6 +17,7 @@ parser.add_argument("--write-translations-from",
                     help="write translation fields from tsv or gexf file", action="store")
 parser.add_argument("--site", help="url prefix",
                     action="store", default = 'https://kielipankki.fi/tools/demo/')
+parser.add_argument("--name", help="name for graph", action="store", default = None)
 
 
 #site = 'http://kielipankki.fi/tools/demo/'
@@ -61,6 +62,8 @@ nsmap = {
     'viz': base_nsmap['viz'],
 }
 
+if args.name is not None:
+    tree.xpath('g:graph', namespaces=nsmap)[0].set("name", args.name)
 attributes = tree.xpath('//g:attributes', namespaces=nsmap)[0]
 children = set(map(lambda x: x.get('id'), attributes.getchildren()))
 if 'korp_url' not in children and args.write_korp:
@@ -120,8 +123,8 @@ for node in tree.xpath('//g:node', namespaces=nsmap):
 
 #    node.set('attvalues', attributes)
 
-#tree.write(args.output, xml_declaration=True, pretty_print = True, encoding = "utf-8")
-xml_string = str(etree.tostring(tree, xml_declaration=True, pretty_print = True, encoding = "utf-8"), "utf-8").replace('&amp;', '&')
-writeobj = open(args.output, 'w')
-writeobj.write(xml_string)
+tree.write(args.output, xml_declaration=True, pretty_print = True, encoding = "utf-8")
+# xml_string = str(etree.tostring(tree, xml_declaration=True, pretty_print = True, encoding = "utf-8"), "utf-8")
+# writeobj = open(args.output, 'w')
+# writeobj.write(xml_string)
 
