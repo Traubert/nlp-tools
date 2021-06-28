@@ -5,10 +5,10 @@ import gexf
 from gexf import GexfGraph
 import egographs
 
-def calculate_layout(graph):
+def calculate_layout(adjacency):
     algo = sknetwork.embedding.force_atlas.ForceAtlas2(n_iter = 40,
                                                        repulsive_factor = 0.2)
-    return algo.fit_transform(graph)
+    return algo.fit_transform(adjacency)
 
 def make_lexgraphs(graph):
     lexgraphs = []
