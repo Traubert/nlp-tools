@@ -4,7 +4,7 @@ These are currently just internal to some projects, used for generating and mani
 
 ## Barebones `.gexf` generation
 
-If you have just sources, destinations and edge weights, you can use `make_gexf.py` to write a simple `.gexf` file, into which you can add other attributes later.
+If you have just sources, destinations and edge weights, you can use `make_gexf.py` to write a simple `.gexf` file, into which you can add other attributes later. There is a comment in `make_gexf.py` about doing this there, or you can use `insert_attribs.py` on the finished .gexf file.
 
 The function `from_tuples(pairs)` takes an iterable of tuples (or lists) with two members: the first one is a (source, destination) pair, the second is a weight. It returns a pretty-printed utf-8 string representing the XML. Eg.
 
