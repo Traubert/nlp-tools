@@ -2,6 +2,7 @@ from lxml import etree
 import sknetwork
 import numpy as np
 from scipy import sparse
+import sys
 
 class GexfNode:
     def __init__(self, label):
@@ -13,7 +14,8 @@ class GexfGraph:
     def __init__(self):
         self.id2node = {}
         self.edges = []
-        self.attribs = {}
+        self.node_attributes = {}
+        self.attributes = {}
     def node_count(self): return len(self.id2node)
     def edge_count(self): return len(self.edges)
     def renumber(self):
@@ -45,9 +47,13 @@ class GexfGraph:
         def viz(s):
             return "{" + nsmap['viz'] + "}" + s
         graph = GexfGraph()
+
+        graph_element = gexf.xpath('//g:graph', namespaces=nsmap)[0]
+        for attribute, value in graph_element.items():
+            graph.attributes[attribute] = value
         for attribute in gexf.xpath('//g:attribute', namespaces=nsmap):
             attrid = attribute.get('id') if attribute.get('id') else attribute.get('for')
-            graph.attribs[attrid] = {'title': attribute.get('title'), 'type': attribute.get('type')}
+            graph.node_attributes[attrid] = {'title': attribute.get('title'), 'type': attribute.get('type')}
 
         for node in gexf.xpath('//g:node', namespaces=nsmap):
             _id = str2int(node.get('id'))
@@ -73,7 +79,7 @@ class GexfGraph:
             src = str2int(edge.get('source'))
             tgt = str2int(edge.get('target'))
             if weight is None:
-                print(f"Unweighted edge: {src} ({graph.id2node[src].label}) - {tgt} ({graph.id2node[tgt].label}), set to 1.0")
+                print(f"Unweighted edge: {src} ({graph.id2node[src].label}) - {tgt} ({graph.id2node[tgt].label}), set to 1.0", file=sys.stderr)
                 weight = 1.0
             else:
                 weight = float(weight)
@@ -84,7 +90,7 @@ class GexfGraph:
         pos2id = {}
         min_x, max_x, min_y, max_y = 0, 0, 0, 0
         for _id, node in self.id2node.items():
-            x, y = node.attvalues.position
+            x, y = node.position
             min_x = min(x, min_x)
             max_x = max(x, min_x)
             min_y = min(y, min_y)
@@ -130,8 +136,8 @@ def adjacency2edgelist(adjacency, undirected = True):
 def gexf_from_edgelist(edgelist, labels, embedding = None):
     xml = etree.Element("gexf",
                         version="1.3",
-                        nsmap=nsmap,
-                        schemaLocation_qname = schemaLocation_val)
+                        nsmap=nsmap)
+    xml.set(schemaLocation_qname, schemaLocation_val)
     graph = etree.Element("graph", mode="static", defaultedgetype="undirected")
     nodes = etree.Element("nodes")
     edges = etree.Element("edges")
@@ -160,8 +166,8 @@ def gexf_from_adjacency(adjacency, labels, embedding = None):
 def gexf_from_tuples(pairs):
     xml = etree.Element("gexf",
                         version="1.3",
-                        nsmap=nsmap,
-                        schemaLocation_qname = schemaLocation_val)
+                        nsmap=nsmap)
+    xml.set(schemaLocation_qname, schemaLocation_val)
     graph = etree.Element("graph", mode="static", defaultedgetype="undirected")
     # If you want additional node attributes (other than labels, like translations), list them:
     # node_attributes = etree.Element("attributes")
@@ -195,15 +201,17 @@ def gexf_from_GexfGraph(gexf_graph):
                         version="1.3",
                         nsmap=nsmap,
                         schemaLocation_qname = schemaLocation_val)
-    graph = etree.Element("graph", mode="static", defaultedgetype="undirected")
+    graph = etree.Element("graph")
+    for k, v in gexf_graph.attributes.items():
+        graph.set(k, v)
     nodes = etree.Element("nodes")
     edges = etree.Element("edges")
     vocabulary = {}
 
-    if len(gexf_graph.attribs) > 0:
+    if len(gexf_graph.node_attributes) > 0:
         node_attributes = etree.Element("attributes")
         node_attributes.set("class", "node")
-        for name, vals in gexf_graph.attribs.items():
+        for name, vals in gexf_graph.node_attributes.items():
             attrib = etree.Element("attribute", id=name)
             for k, v in vals.items():
                 attrib.set(k, v)
